@@ -1,0 +1,11 @@
+{
+  "name": "notes-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda function for notes CRUD operations",
+  "main": "notes-handler.js",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0"
+  }
+}
