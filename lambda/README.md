@@ -11,6 +11,20 @@ This directory contains the AWS Lambda function code that is deployed separately
 
 ### Environment Variables Required:
 - `TABLE_NAME` - DynamoDB table name for storing notes
+- `API_KEY` - API key for authentication (default: `notes-demo-key-123`)
+
+### Authentication:
+All requests must include the `x-api-key` header:
+```
+x-api-key: notes-demo-key-123
+```
+
+**Without the header:**
+- Response: `401 Unauthorized`
+- Body: `{ "error": "Unauthorized: Invalid or missing API key" }`
+
+**With valid header:**
+- Request proceeds normally
 
 ### API Endpoints:
 - **GET** `/` - Get all notes

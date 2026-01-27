@@ -14,9 +14,23 @@ export default function NotesPage() {
   const [content, setContent] = useState("");
 
   const loadNotes = async () => {
-    const res = await fetch("/api/notes");
-    const data = await res.json();
-    setNotes(data);
+    try {
+      const res = await fetch("/api/notes");
+      const data = await res.json();
+      
+      // Handle different response formats
+      if (Array.isArray(data)) {
+        setNotes(data);
+      } else if (data.items && Array.isArray(data.items)) {
+        setNotes(data.items);
+      } else {
+        console.error("Unexpected response format:", data);
+        setNotes([]);
+      }
+    } catch (error) {
+      console.error("Failed to load notes:", error);
+      setNotes([]);
+    }
   };
 
   const addNote = async () => {
@@ -32,13 +46,7 @@ export default function NotesPage() {
   };
 
   useEffect(() => {
-    const fetchNotes = async () => {
-      const res = await fetch("/api/notes");
-      const data = await res.json();
-      setNotes(data);
-    };
-    
-    fetchNotes();
+    loadNotes();
   }, []);
 
   const deleteNote = async (noteId: string) => {
@@ -107,7 +115,7 @@ const editNote = async (note: Note) => {
               <p className="text-gray-500 text-lg">No notes yet. Create your first note above! 📝</p>
             </div>
           ) : (
-            notes.map((note) => (
+            notes?.map((note) => (
               <div key={note.noteId} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition duration-200">
                 <div className="mb-4">
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">{note.title}</h3>
