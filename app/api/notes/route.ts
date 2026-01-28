@@ -14,15 +14,41 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  try {
+    const contentType = req.headers.get("content-type") || "";
+    
+    let body;
+    
+    if (contentType.includes("multipart/form-data")) {
+      // Handle file uploads with FormData
+      const formData = await req.formData();
+      
+      const res = await fetch(LAMBDA_URL, {
+        method: "POST",
+        headers: { "x-api-key": API_KEY },
+        body: formData,
+      });
 
-  const res = await fetch(LAMBDA_URL, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+      return Response.json(await res.json(), { status: 201 });
+    } else {
+      // Handle JSON requests
+      body = await req.json();
 
-  return Response.json(await res.json(), { status: 201 });
+      const res = await fetch(LAMBDA_URL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      return Response.json(await res.json(), { status: 201 });
+    }
+  } catch (error) {
+    console.error("POST /api/notes error:", error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Failed to create note" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function PUT(req: NextRequest) {
