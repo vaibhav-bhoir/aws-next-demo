@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  env: {
+    LAMBDA_URL: process.env.LAMBDA_URL,
+    API_KEY: process.env.API_KEY,
+  },
 };
 
 export default nextConfig;
