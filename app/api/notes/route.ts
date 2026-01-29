@@ -3,6 +3,12 @@ import { NextRequest } from "next/server";
 const LAMBDA_URL = process.env.LAMBDA_URL;
 const API_KEY = process.env.API_KEY;
 
+console.log("Environment check:", {
+  LAMBDA_URL: LAMBDA_URL ? "SET" : "MISSING",
+  API_KEY: API_KEY ? "SET" : "MISSING",
+  allEnvKeys: Object.keys(process.env).filter(k => k.includes("LAMBDA") || k.includes("API"))
+});
+
 if (!LAMBDA_URL || !API_KEY) {
   console.error("Missing environment variables:", { LAMBDA_URL: !!LAMBDA_URL, API_KEY: !!API_KEY });
 }
