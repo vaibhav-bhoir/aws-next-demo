@@ -28,6 +28,10 @@ const API_KEY = process.env.API_KEY;
 
 // Parse multipart/form-data
 function parseMultipartFormData(body, boundary, isBase64Encoded) {
+  if (!body) {
+    return {};
+  }
+  
   const bodyBuffer = isBase64Encoded ? Buffer.from(body, "base64") : Buffer.from(body, "binary");
   const parts = {};
   
@@ -81,9 +85,12 @@ function parseMultipartFormData(body, boundary, isBase64Encoded) {
 
 export const handler = async (event) => {
   console.log("Event:", JSON.stringify(event));
+  console.log("Event headers:", JSON.stringify(event.headers));
+  console.log("Event body type:", typeof event.body);
+  console.log("Event isBase64Encoded:", event.isBase64Encoded);
 
   // ===== API Key Authentication =====
-  const requestApiKey = event.headers?.["x-api-key"];
+  const requestApiKey = event.headers?.["x-api-key"] || event.headers?.["X-Api-Key"];
   
   console.log("Expected API Key:", API_KEY);
   console.log("Received API Key:", requestApiKey);
@@ -106,19 +113,29 @@ export const handler = async (event) => {
   console.log("Authentication successful!");
   // ==================================
 
-  const method = event.requestContext?.http?.method;
+  const method = event.requestContext?.http?.method || event.httpMethod;
   const userId = "demo-user"; // temp auth
+  
+  console.log("HTTP Method:", method);
 
   try {
     // CREATE with optional file upload
     if (method === "POST") {
-      const isMultipart = event.headers?.["content-type"]?.includes("multipart/form-data");
+      const contentType = event.headers?.["content-type"] || event.headers?.["Content-Type"] || "";
+      const isMultipart = contentType.includes("multipart/form-data");
       
       let title, content, fileUrl = null, fileName = null, s3Key = null;
       
       if (isMultipart) {
         // Parse multipart form data
-        const boundary = event.headers["content-type"]?.split("boundary=")[1];
+        const boundary = contentType?.split("boundary=")[1];
+        if (!boundary) {
+          return {
+            statusCode: 400,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ error: "Missing boundary in multipart request" }),
+          };
+        }
         const parts = parseMultipartFormData(event.body, boundary, event.isBase64Encoded);
         
         title = parts.title;
@@ -192,7 +209,8 @@ export const handler = async (event) => {
 
     // UPDATE (with optional file handling)
     if (method === "PUT") {
-      const isMultipart = event.headers?.["content-type"]?.includes("multipart/form-data");
+      const contentType = event.headers?.["content-type"] || event.headers?.["Content-Type"] || "";
+      const isMultipart = contentType.includes("multipart/form-data");
       
       let title, content, newFileUrl, newFileName, newS3Key;
       
@@ -220,7 +238,14 @@ export const handler = async (event) => {
       
       // Step 2: Parse request data
       if (isMultipart) {
-        const boundary = event.headers["content-type"]?.split("boundary=")[1];
+        const boundary = contentType?.split("boundary=")[1];
+        if (!boundary) {
+          return {
+            statusCode: 400,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ error: "Missing boundary in multipart request" }),
+          };
+        }
         const parts = parseMultipartFormData(event.body, boundary, event.isBase64Encoded);
         
         title = parts.title || oldNote.title;
@@ -393,7 +418,16 @@ export const handler = async (event) => {
 
     return { statusCode: 405, body: "Method Not Allowed" };
   } catch (err) {
-    console.error(err);
-    return { statusCode: 500, body: "Internal Server Error" };
+    console.error("Error details:", err);
+    console.error("Error stack:", err.stack);
+    console.error("Event that caused error:", JSON.stringify(event));
+    return { 
+      statusCode: 500, 
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        error: "Internal Server Error",
+        message: err.message 
+      })
+    };
   }
 };
