@@ -25,8 +25,11 @@ export default function NotesPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
   const [editFile, setEditFile] = useState<File | null>(null);
-  const [removeExistingFile, setRemoveExistingFile] = useState(false);
   const editFileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Delete modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
 
   const loadNotes = async () => {
     try {
@@ -94,10 +97,27 @@ export default function NotesPage() {
   }, []);
 
   const deleteNote = async (noteId: string) => {
-    if (!confirm("Are you sure you want to delete this note?")) return;
-    
-    await fetch(`/api/notes?noteId=${noteId}`, { method: "DELETE" });
-    loadNotes();
+    try {
+      setLoading(true);
+      await fetch(`/api/notes?noteId=${noteId}`, { method: "DELETE" });
+      setIsDeleteModalOpen(false);
+      setDeletingNoteId(null);
+      loadNotes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete note");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openDeleteModal = (noteId: string) => {
+    setDeletingNoteId(noteId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setDeletingNoteId(null);
   };
 
   const openEditModal = (note: Note) => {
@@ -105,7 +125,6 @@ export default function NotesPage() {
     setEditTitle(note.title);
     setEditContent(note.content);
     setEditFile(null);
-    setRemoveExistingFile(false);
     setIsEditModalOpen(true);
   };
 
@@ -115,7 +134,6 @@ export default function NotesPage() {
     setEditTitle("");
     setEditContent("");
     setEditFile(null);
-    setRemoveExistingFile(false);
     if (editFileInputRef.current) {
       editFileInputRef.current.value = "";
     }
@@ -239,7 +257,7 @@ export default function NotesPage() {
                   </button>
                   
                   <button 
-                    onClick={() => deleteNote(note.noteId)}
+                    onClick={() => openDeleteModal(note.noteId)}
                     className="px-4 py-2 bg-red-600 hover:bg-red-700 cursor-pointer text-white font-medium rounded-lg transition duration-200 shadow-sm hover:shadow-md"
                   >
                     🗑️ Delete
@@ -338,6 +356,55 @@ export default function NotesPage() {
                 </button>
                 <button
                   onClick={closeEditModal}
+                  disabled={loading}
+                  className="px-6 py-3 cursor-pointer bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 font-medium rounded-lg transition duration-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {isDeleteModalOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn"
+            onClick={closeDeleteModal}
+          >
+            <div 
+              className="bg-white rounded-lg shadow-2xl max-w-md w-full animate-slideUp"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-800">🗑️ Delete Note</h2>
+                <button
+                  onClick={closeDeleteModal}
+                  className="text-gray-400 cursor-pointer hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6">
+                <p className="text-gray-600 text-lg">
+                  Are you sure you want to delete this note? This action cannot be undone.
+                </p>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 p-6 border-t border-gray-200">
+                <button
+                  onClick={() => deletingNoteId && deleteNote(deletingNoteId)}
+                  disabled={loading}
+                  className="flex-1 px-6 cursor-pointer py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition duration-200 shadow-md hover:shadow-lg"
+                >
+                  {loading ? "Deleting..." : "🗑️ Yes, Delete"}
+                </button>
+                <button
+                  onClick={closeDeleteModal}
                   disabled={loading}
                   className="px-6 py-3 cursor-pointer bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 text-gray-700 font-medium rounded-lg transition duration-200"
                 >
