@@ -79,19 +79,56 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  if (!LAMBDA_URL) {
-    return Response.json({ error: "LAMBDA_URL not configured" }, { status: 500 });
+  try {
+    if (!LAMBDA_URL) {
+      return Response.json({ error: "LAMBDA_URL not configured" }, { status: 500 });
+    }
+
+    const contentType = req.headers.get("content-type") || "";
+    
+    if (contentType.includes("multipart/form-data")) {
+      // Handle file updates with FormData
+      const formData = await req.formData();
+      const noteId = formData.get("noteId");
+      
+      const res = await fetch(`${LAMBDA_URL}?noteId=${noteId}`, {
+        method: "PUT",
+        headers: { "x-api-key": API_KEY || "" },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Lambda error:", errorText);
+        return Response.json({ error: errorText }, { status: res.status });
+      }
+
+      return Response.json(await res.json());
+    } else {
+      // Handle JSON updates
+      const body = await req.json();
+
+      const res = await fetch(LAMBDA_URL, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Lambda error:", errorText);
+        return Response.json({ error: errorText }, { status: res.status });
+      }
+
+      return Response.json(await res.json());
+    }
+  } catch (error) {
+    console.error("PUT /api/notes error:", error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Failed to update note" },
+      { status: 500 }
+    );
   }
-  
-  const body = await req.json();
-
-  const res = await fetch(LAMBDA_URL, {
-    method: "PUT",
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  return Response.json(await res.json());
 }
 
 export async function DELETE(req: NextRequest) {
